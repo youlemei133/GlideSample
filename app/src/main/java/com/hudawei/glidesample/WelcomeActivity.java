@@ -8,6 +8,7 @@ import android.view.View;
 
 /**
  * Created by hudawei on 2018/4/27.
+ * a
  */
 
 public class WelcomeActivity extends Activity {

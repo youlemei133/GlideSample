@@ -19,6 +19,7 @@ import static android.support.v7.widget.RecyclerView.NO_POSITION;
  * 1.isAutoMeasureEnabled()
  * 2.scrollVerticallyBy 滑动的时候调用
  * 3.onLayoutChildren   布局的时候调用
+ * a
  */
 
 public class YtaLayoutManager extends RecyclerView.LayoutManager {
