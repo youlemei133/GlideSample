@@ -2,11 +2,8 @@ package com.hudawei.glidesample;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.graphics.Rect;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.view.View;
 
 /**
@@ -16,6 +13,7 @@ import android.view.View;
 public class WelcomeActivity extends Activity {
 
     private YtaRecyclerView recyclerView;
+//    private LinearLayoutManager manager;
     private YtaLayoutManager manager;
     private RecycleAdapter mAdapter;
 
@@ -26,29 +24,11 @@ public class WelcomeActivity extends Activity {
 
         recyclerView = findViewById(R.id.recyclerView);
 
-        manager = new YtaLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+//        manager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, true);
+        manager = new YtaLayoutManager();
         recyclerView.setLayoutManager(manager);
         mAdapter = new RecycleAdapter();
         recyclerView.setAdapter(mAdapter);
-
-        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
-                super.onScrollStateChanged(recyclerView, newState);
-            }
-
-            @Override
-            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                super.onScrolled(recyclerView, dx, dy);
-
-            }
-        });
-        recyclerView.addItemDecoration(new RecyclerView.ItemDecoration() {
-            @Override
-            public void getItemOffsets(Rect outRect, View view, RecyclerView parent, RecyclerView.State state) {
-                super.getItemOffsets(outRect, view, parent, state);
-            }
-        });
     }
 
     public void test(View view) {
