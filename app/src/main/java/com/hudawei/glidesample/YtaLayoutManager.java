@@ -1,8 +1,10 @@
 package com.hudawei.glidesample;
 
+import android.content.Context;
 import android.graphics.Rect;
 import android.support.v7.widget.OrientationHelper;
 import android.support.v7.widget.RecyclerView;
+import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,7 +17,7 @@ import static android.support.v7.widget.RecyclerView.NO_POSITION;
  * Created by hudawei on 2018/5/7.
  * <p>
  * LayoutManager
- *
+ * <p>
  * 1.isAutoMeasureEnabled()
  * 2.scrollVerticallyBy 滑动的时候调用
  * 3.onLayoutChildren   布局的时候调用
@@ -24,14 +26,59 @@ import static android.support.v7.widget.RecyclerView.NO_POSITION;
 
 public class YtaLayoutManager extends RecyclerView.LayoutManager {
     public static final int INVALID_OFFSET = Integer.MIN_VALUE;
+    public static final int INVALID_SCROLLEDY = Integer.MIN_VALUE;
+    private final int MAX_SHOW_COUNT = 4;
     private LayoutState mLayoutState;
     final AnchorInfo mAnchorInfo = new AnchorInfo();
     private final LayoutChunkResult mLayoutChunkResult = new LayoutChunkResult();
 
+
+    private void initScrolledYFromStart(View child) {
+        YtaLayoutParams params = (YtaLayoutParams) child.getLayoutParams();
+        params.mScrolledY = getScrolledYByTop(0);
+    }
+
+    private void initScrolledYFromEnd(View child) {
+        YtaLayoutParams params = (YtaLayoutParams) child.getLayoutParams();
+        params.mScrolledY = getScrolledYByTop(getHeight() - child.getHeight());
+    }
+
+    private int getTopByScrolling(View child, int dy) {
+        YtaLayoutParams params = (YtaLayoutParams) child.getLayoutParams();
+        params.mScrolledY += dy;
+        int h = getHeight();
+        if (params.mScrolledY < 0)
+            params.mScrolledY = 0;
+        if (params.mScrolledY > h)
+            params.mScrolledY = h;
+        double result = Math.pow((h - params.mScrolledY) * 1.0f / h, 4) * h;
+        if (result < 0)
+            result = 0;
+        if (result > h)
+            result = h;
+        return (int) result;
+    }
+
+    private int getScrolledYByTop(int top) {
+        int h = getHeight();
+        int result = (int) (h * (1 - Math.pow(top * 1.0f / h, 1.0f / 4)));
+        if (result < 0)
+            result = 0;
+        if (result > h)
+            result = h;
+        return result;
+    }
+
     @Override
     public RecyclerView.LayoutParams generateDefaultLayoutParams() {
-        return new RecyclerView.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+        return new YtaLayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
+    }
+
+    @Override
+    public RecyclerView.LayoutParams generateLayoutParams(Context c, AttributeSet attrs) {
+        return new YtaLayoutParams(c,
+                attrs);
     }
 
     @Override
@@ -143,6 +190,7 @@ public class YtaLayoutManager extends RecyclerView.LayoutManager {
 
     @Override
     public void onLayoutChildren(RecyclerView.Recycler recycler, RecyclerView.State state) {
+        Log.e("onLayoutChildren", "onLayoutChildren");
         super.onLayoutChildren(recycler, state);
         if (state.getItemCount() == 0) {
             //如过Adapter中的item个数为0，就回收Recycler中所有的View
@@ -410,10 +458,10 @@ public class YtaLayoutManager extends RecyclerView.LayoutManager {
             return;
         }
         //获取新View的LayoutParams
-        RecyclerView.LayoutParams params = (RecyclerView.LayoutParams) view.getLayoutParams();
+        YtaLayoutParams params = (YtaLayoutParams) view.getLayoutParams();
         if (layoutState.mScrapList == null) {
-            if(layoutState.mLayoutDirection
-                    == LayoutState.LAYOUT_START){
+            if (layoutState.mLayoutDirection
+                    == LayoutState.LAYOUT_START) {
                 addView(view);//添加该view到RecyclerView
             } else {
                 addView(view, 0);
@@ -437,9 +485,24 @@ public class YtaLayoutManager extends RecyclerView.LayoutManager {
             bottom = layoutState.mOffset;
             //mConsumed为该view所占高度大小
             top = layoutState.mOffset - result.mConsumed;
+            Log.e("layoutChunk",layoutState.mCurrentPosition + " layoutChunk top"+top);
         } else {
             top = layoutState.mOffset;
             bottom = layoutState.mOffset + result.mConsumed;
+        }
+
+        if (params.mScrolledY == INVALID_SCROLLEDY) {
+            if (layoutState.mCurrentPosition == 1) {
+                layoutState.mStartScrolledY = getScrolledYByTop(top);
+                params.mScrolledY = layoutState.mStartScrolledY;
+                Log.e("layoutChunk",layoutState.mCurrentPosition + " layoutChunk top"+top);
+            } else {
+                params.mScrolledY = (int) (layoutState.mStartScrolledY -
+                        (layoutState.mStartScrolledY * 1.0f / MAX_SHOW_COUNT) *
+                                layoutState.mCurrentPosition);
+                top = getTopByScrolling(view, params.mScrolledY);
+                Log.e("layoutChunk",layoutState.mCurrentPosition + " layoutChunk top"+top);
+            }
         }
         // We calculate everything with View's bounding box (which includes decor and margins)
         // To calculate correct layout position, we subtract margins.
@@ -534,6 +597,7 @@ public class YtaLayoutManager extends RecyclerView.LayoutManager {
          */
         int mCurrentPosition;
 
+        int mStartScrolledY;
         /**
          * Defines the direction in which the data adapter is traversed.
          * Should be {@link #ITEM_DIRECTION_HEAD} or {@link #ITEM_DIRECTION_TAIL}
@@ -785,6 +849,23 @@ public class YtaLayoutManager extends RecyclerView.LayoutManager {
             mFinished = false;
             mIgnoreConsumed = false;
             mFocusable = false;
+        }
+    }
+
+    static class YtaLayoutParams extends RecyclerView.LayoutParams {
+        /**
+         * 手指滑动的距离
+         * 在addView的时候初始化该值
+         * 在滑动的时候修改该值
+         */
+        int mScrolledY = INVALID_SCROLLEDY;
+
+        public YtaLayoutParams(int width, int height) {
+            super(width, height);
+        }
+
+        public YtaLayoutParams(Context c, AttributeSet attrs) {
+            super(c, attrs);
         }
     }
 }

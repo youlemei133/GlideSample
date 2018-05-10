@@ -15,7 +15,7 @@ public class WelcomeActivity extends Activity {
 
     private YtaRecyclerView recyclerView;
 //    private LinearLayoutManager manager;
-    private YtaLayoutManager manager;
+    private Yta2LayoutManager manager;
     private RecycleAdapter mAdapter;
 
     @Override
@@ -26,7 +26,7 @@ public class WelcomeActivity extends Activity {
         recyclerView = findViewById(R.id.recyclerView);
 
 //        manager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, true);
-        manager = new YtaLayoutManager();
+        manager = new Yta2LayoutManager();
         recyclerView.setLayoutManager(manager);
         mAdapter = new RecycleAdapter();
         recyclerView.setAdapter(mAdapter);
