@@ -1,7 +1,6 @@
 package com.hudawei.glidesample;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.view.View;
@@ -14,7 +13,7 @@ import android.view.View;
 public class WelcomeActivity extends Activity {
 
     private YtaRecyclerView recyclerView;
-//    private LinearLayoutManager manager;
+    //    private LinearLayoutManager manager;
     private Yta2LayoutManager manager;
     private RecycleAdapter mAdapter;
 
@@ -30,9 +29,13 @@ public class WelcomeActivity extends Activity {
         recyclerView.setLayoutManager(manager);
         mAdapter = new RecycleAdapter();
         recyclerView.setAdapter(mAdapter);
+
     }
 
     public void test(View view) {
-        startActivity(new Intent(this, MainActivity.class));
+//        startActivity(new Intent(this, MainActivity.class));
+        int startPosition = mAdapter.getItemCount();
+        mAdapter.addItem();
+        mAdapter.notifyItemRangeInserted(startPosition, 10);
     }
 }

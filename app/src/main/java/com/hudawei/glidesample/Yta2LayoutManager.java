@@ -1,6 +1,7 @@
 package com.hudawei.glidesample;
 
 import android.content.Context;
+import android.support.v4.view.ViewCompat;
 import android.support.v7.widget.RecyclerView;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -34,9 +35,8 @@ public class Yta2LayoutManager extends RecyclerView.LayoutManager {
     private final int MAX_SHOW_COUNT = 5;
     private final int FIRST_ITEM_MIN_BOTTOM = 0;
     private final int LAST_ITEM_MAX_TOP = 300;
+    private final int ITEM_MAX_MARGIN = 100;
 
-    private int mStartScrollYDv;//前2个item的ScrollY差值
-    private int mEndScrollYDv;//后2个Item的ScrollY差值
     private int mBoundScrollY;//ScrolledY零界点，零界点前面使用直线公式，后面使用4次方公式
     private int mBoundTop;//Top零界点，零界点前面使用直线公式，后面使用4次方公式
     private int mMinScrolledY;//Item的ScrollY的最小值
@@ -44,6 +44,8 @@ public class Yta2LayoutManager extends RecyclerView.LayoutManager {
     private int mMaxTop;//Item的最大Top值
     private int mLastItemMaxScrolledY;
     private int mFirstItemMinScrolledY;
+    private List<Integer> mScrolledYs;
+    private boolean mScrollFlag;
 
     /**
      * 当Adapter在onCreateView调用LayoutInflater加载布局设置parent为null时，
@@ -97,6 +99,7 @@ public class Yta2LayoutManager extends RecyclerView.LayoutManager {
     @Override
     public int scrollVerticallyBy(int dy, RecyclerView.Recycler recycler,
                                   RecyclerView.State state) {
+        mScrollFlag = true;
         return scrollBy(dy, recycler, state);
     }
 
@@ -111,6 +114,11 @@ public class Yta2LayoutManager extends RecyclerView.LayoutManager {
         if (state.getItemCount() == 0) {
             //如过Adapter中的item个数为0，就回收Recycler中所有的View
             removeAndRecycleAllViews(recycler);
+            return;
+        }
+        if (mScrollFlag) {
+            fillStart(0, recycler, state);
+            return;
         }
 
         //将已经Attached的View变为Detach和Scrap
@@ -121,24 +129,26 @@ public class Yta2LayoutManager extends RecyclerView.LayoutManager {
         int firstItemHeight = 0;
         int preTop = 0;
         List<Integer> tops = null;
-        for (int i = 0; i < MAX_SHOW_COUNT; i++) {
+        int left = 0;
+        int top = getHeight();
+        int right = 0;
+        int bottom = 0;
+        mScrolledYs = new ArrayList<>();
+        while (top > 0) {
             //从Recycler中获取一个View
             View view = recycler.getViewForPosition(position);
-
             YtaLayoutParams params = (YtaLayoutParams) view.getLayoutParams();
-            position++;
             //添加该view到RecyclerView
             addView(view, 0);
             //测量View，会加上ItemDecoration中设置的Rect值
             measureChildWithMargins(view, 0, 0);
             //计算该view布局的位置
-            int left, top, right, bottom;
             left = getPaddingLeft();
             //左内边距+带修饰View的宽度+view左右外边距
             right = left + getDecoratedMeasuredWidth(view) + params.leftMargin
                     + params.rightMargin;
 
-            if (i == 0) {//如果是第一个Item
+            if (position == 0) {//如果是第一个Item
                 firstItemHeight = view.getMeasuredHeight();
                 //获取top值
                 preTop = mBoundTop = top = getHeight() - firstItemHeight;
@@ -148,27 +158,40 @@ public class Yta2LayoutManager extends RecyclerView.LayoutManager {
                 //计算各个Item的top值
                 tops = calcItemTop(top);
             } else {
-                //获取top值
-                top = preTop - tops.get(i - 1);
-                //获取对应的ScrolledY值
-                params.mScrolledY = getScrolledYByTop(top);
-                if (i == 1) {//计算开始2个Item的ScrollY差值
-                    mStartScrollYDv = params.mScrolledY - preScrollY;
+
+                if (position == 1) {//计算开始2个Item的ScrollY差值
+                    //获取top值
+                    top = preTop - tops.get(position - 1);
+                    //获取对应的ScrolledY值
+                    params.mScrolledY = getScrolledYByTop(top);
+                    int mStartScrollYDv = params.mScrolledY - preScrollY;
                     mMinScrolledY = preScrollY - mStartScrollYDv;
-                } else if (i == MAX_SHOW_COUNT - 2) {//倒数第2个Item - 倒数第3个Item的ScrollY
-                    mEndScrollYDv = params.mScrolledY - preScrollY;
-                } else if (i == MAX_SHOW_COUNT - 1) {//计算最后2个Item的ScrollY差值
-                    params.mScrolledY = preScrollY + mEndScrollYDv;
+                } else if (position >= MAX_SHOW_COUNT - 1) {//计算最后2个Item的ScrollY差值
+                    params.mScrolledY = mBoundScrollY + (preScrollY - mMinScrolledY);
                     mMaxScrolledY = params.mScrolledY;
+                    top = getTopByScrolledY(params.mScrolledY);
+                } else {
+                    //获取top值
+                    top = preTop - tops.get(position - 1);
+                    //获取对应的ScrolledY值
+                    params.mScrolledY = getScrolledYByTop(top);
                 }
                 preScrollY = params.mScrolledY;
                 preTop = top;
             }
             bottom = top + view.getMeasuredHeight();
+
+            int margin = getMarginByTop(top);
+            view.setScaleX((view.getMeasuredWidth() - 2 * margin) * 1.0f / view.getMeasuredWidth());
+            view.setScaleY((view.getMeasuredWidth() - 2 * margin) * 1.0f / view.getMeasuredWidth());
             //调用view的layout布局方法
             layoutDecoratedWithMargins(view, left, top, right, bottom);
-
+            Log.e("onLayoutChildren", position + "\tscrollY : " + params.mScrolledY + "\ttop : " + getTopByScrolledY(params.mScrolledY));
+            position++;
+            mScrolledYs.add(params.mScrolledY);
         }
+        //设置阴影
+        setElevation();
         mLastItemMaxScrolledY = getScrolledYByTop(LAST_ITEM_MAX_TOP);
         mFirstItemMinScrolledY = getScrolledYByTop(getHeight() - FIRST_ITEM_MIN_BOTTOM - firstItemHeight);
     }
@@ -205,12 +228,16 @@ public class Yta2LayoutManager extends RecyclerView.LayoutManager {
     private int getTopByScrolledY(int scrollY) {
         int h = getHeight();
         double result;
-        if (scrollY > mBoundScrollY) {
-            result = Math.pow((h - scrollY) * 1.0f / h, 4) * h;
+        if (scrollY >= mMaxScrolledY) {
+            result = 0;
         } else {
-            result = calcTopByScrollY(scrollY);
+            if (scrollY > mBoundScrollY) {
+                result = Math.pow((h - scrollY) * 1.0f / h, 4) * h;
+            } else {
+                result = calcTopByScrollY(scrollY);
+            }
         }
-        return (int) result;
+        return (int) Math.ceil(result);
     }
 
     /**
@@ -222,7 +249,7 @@ public class Yta2LayoutManager extends RecyclerView.LayoutManager {
     private int getScrolledYByTop(int top) {
         int result = 0;
         if (top > mBoundTop) {
-            calcScrollYByTop(top);
+            result = calcScrollYByTop(top);
         } else {
             int h = getHeight();
             result = (int) (h * (1 - Math.pow(top * 1.0f / h, 1.0f / 4)));
@@ -230,81 +257,163 @@ public class Yta2LayoutManager extends RecyclerView.LayoutManager {
         return result;
     }
 
-    private void downScroll(int dy, RecyclerView.Recycler recycler,
-                            RecyclerView.State state) {
-        //1.计算需要添加的Item
+    private int getEndViewTop(int dy) {
         View endView = getChildClosestToEnd();
         YtaLayoutParams endParams = (YtaLayoutParams) endView.getLayoutParams();
-        int endPosition = endParams.getViewAdapterPosition();
-        //添加View
-        if (getTopByScrolledY(endParams.mScrolledY + dy) > 0 && endPosition + 1 < state.getItemCount()) {
-            View newView = recycler.getViewForPosition(endPosition + 1);
+        return getTopByScrolledY(endParams.mScrolledY + dy);
+    }
+
+    private int getEndViewAdapterPosition() {
+        View endView = getChildClosestToEnd();
+        YtaLayoutParams endParams = (YtaLayoutParams) endView.getLayoutParams();
+        return endParams.getViewAdapterPosition();
+    }
+
+    private int getNextScrolledY(int curTop) {
+        int curScrolledY = getScrolledYByTop(curTop);
+        for (int i = 0; i < mScrolledYs.size(); i++) {
+            if (curScrolledY < mScrolledYs.get(i)) {
+                int nextScrolledY;
+                if (i != mScrolledYs.size() - 1) {
+                    nextScrolledY = mScrolledYs.get(i + 1) - mScrolledYs.get(i);
+                } else {
+                    nextScrolledY = mScrolledYs.get(mScrolledYs.size() - 1) -
+                            mScrolledYs.get(mScrolledYs.size() - 2);
+                }
+                return nextScrolledY + curScrolledY;
+            }
+        }
+        return -1;
+    }
+
+    private void downScroll(int dy, RecyclerView.Recycler recycler,
+                            RecyclerView.State state) {
+        //1.填充
+        //如果endView滑动dy后的top值大于0，就需要考虑添加View
+        //我们需要填充endView的Top上面的空间
+        //如果新的endView的Top > RecyclerView高度，则填充整个Child
+        //如果新的endView的Top <= RecyclerView高度，则按前面保存的mScrolledYs值填充
+
+        fillStart(dy, recycler, state);
+
+        //设置阴影
+        setElevation();
+
+        //2.滑动
+        for (int i = 0; i < getChildCount(); i++) {
+            View child = getChildAt(i);
+            YtaLayoutParams params = (YtaLayoutParams) child.getLayoutParams();
+            int oldTop = child.getTop();
+            int top = getTopByScrolledY(params.mScrolledY + dy);
+            params.mScrolledY += dy;
+            if (i == 0) {
+                Log.e("downScroll", "下滑动移动：" + params.getViewAdapterPosition() + "\toldTop : " + oldTop + "\ttop : " + top + "\tdy : " + dy);
+            }
+            int margin = getMarginByTop(top);
+            child.setScaleX((child.getMeasuredWidth() - 2 * margin) * 1.0f / child.getMeasuredWidth());
+            child.setScaleY((child.getMeasuredWidth() - 2 * margin) * 1.0f / child.getMeasuredWidth());
+
+            child.offsetTopAndBottom(top - oldTop);
+
+        }
+
+        //3.回收
+        for (int i = 0; i < getChildCount(); i++) {
+            if (getChildAt(i).getTop() > getHeight()) {
+                recycleChildren(recycler, i, getChildCount());
+                break;
+            }
+        }
+    }
+
+    private void fillStart(int dy, RecyclerView.Recycler recycler, RecyclerView.State state) {
+        int startRemaining = getEndViewTop(dy);
+        int endPosition = getEndViewAdapterPosition();
+        while (startRemaining > 0 && ++endPosition != state.getItemCount()) {
+            View newView = recycler.getViewForPosition(endPosition);
             YtaLayoutParams newParams = (YtaLayoutParams) newView.getLayoutParams();
-            newParams.mScrolledY = endParams.mScrolledY + mEndScrollYDv;
             //添加该view到RecyclerView
             addView(newView, 0);
             //测量View，会加上ItemDecoration中设置的Rect值
             measureChildWithMargins(newView, 0, 0);
             //计算该view布局的位置
             int left, top, right, bottom;
-            //获取对应的top值
-            top = getTopByScrolledY(newParams.mScrolledY);
             left = getPaddingLeft();
             //左内边距+带修饰View的宽度+view左右外边距
             right = left + getDecoratedMeasuredWidth(newView) + newParams.leftMargin
                     + newParams.rightMargin;
-            bottom = top + newParams.height;
+            //计算该view布局的位置
+            if (startRemaining > getHeight()) {
+                startRemaining -= newView.getMeasuredHeight();
+                newParams.mScrolledY = getScrolledYByTop(startRemaining) - dy;
+            } else {
+                int scrolledY = getNextScrolledY(startRemaining);
+                startRemaining = getTopByScrolledY(scrolledY);
+                newParams.mScrolledY = scrolledY - dy;
+            }
+            top = getTopByScrolledY(newParams.mScrolledY);
+            bottom = top + newView.getMeasuredHeight();
+            int margin = getMarginByTop(top);
+            newView.setScaleX((newView.getMeasuredWidth() - 2 * margin) * 1.0f / newView.getMeasuredWidth());
+            newView.setScaleY((newView.getMeasuredWidth() - 2 * margin) * 1.0f / newView.getMeasuredWidth());
             //调用view的layout布局方法
             layoutDecoratedWithMargins(newView, left, top, right, bottom);
-            Log.e("downScroll", "下滑动添加：" + (endPosition + 1));
         }
-        //2.滑动
-        for (int i = 0; i < getChildCount(); i++) {
-            View child = getChildAt(i);
-            YtaLayoutParams params = (YtaLayoutParams) child.getLayoutParams();
-            int oldTop = child.getTop();
-            int top = getTopByScrolledY(params.mScrolledY + dy);
-            params.mScrolledY += dy;
-            child.offsetTopAndBottom(top - oldTop);
-        }
-        //3.回收
+    }
+
+    private int getStartScrolledY(int dy) {
         View startView = getChildClosestToStart();
         YtaLayoutParams startParams = (YtaLayoutParams) startView.getLayoutParams();
-        int startPosition = startParams.getViewAdapterPosition();
-        if (startParams.mScrolledY + dy < mMinScrolledY) {
-            recycleChildren(recycler, getChildCount() - 1, getChildCount());
-            Log.e("downScroll", "下滑动回收：" + startPosition);
-        }
+        return startParams.mScrolledY + dy;
+    }
+
+    private int getStartAdapterPosition() {
+        View startView = getChildClosestToStart();
+        YtaLayoutParams startParams = (YtaLayoutParams) startView.getLayoutParams();
+        return startParams.getViewAdapterPosition();
+    }
+
+    private int getStartBottom() {
+        View startView = getChildClosestToStart();
+        return startView.getBottom();
     }
 
     private void upScroll(int dy, RecyclerView.Recycler recycler,
                           RecyclerView.State state) {
-        //1.计算需要添加的Item
-        View startView = getChildClosestToStart();
-        YtaLayoutParams startParams = (YtaLayoutParams) startView.getLayoutParams();
-        int startPosition = startParams.getViewAdapterPosition();
-        //添加View
-        if (startParams.mScrolledY + dy >= mBoundScrollY && startPosition - 1 >= 0) {
-            View newView = recycler.getViewForPosition(startPosition - 1);
+        //1.填充
+        //如果startView的mScrolledY + dy是否大于mBoundScrolledY，如果大于需要在后面添加新View
+        //新View的Top值为前一个View的Bottom
+
+        int startPosition = getStartAdapterPosition();
+        while (getStartScrolledY(dy) > mBoundScrollY && --startPosition >= 0) {
+            int startBottom = getStartBottom();
+            View newView = recycler.getViewForPosition(startPosition);
             YtaLayoutParams newParams = (YtaLayoutParams) newView.getLayoutParams();
-            newParams.mScrolledY = startParams.mScrolledY - mStartScrollYDv;
             //添加该view到RecyclerView
             addView(newView);
             //测量View，会加上ItemDecoration中设置的Rect值
             measureChildWithMargins(newView, 0, 0);
             //计算该view布局的位置
             int left, top, right, bottom;
-            //获取对应的top值
-            top = getTopByScrolledY(newParams.mScrolledY);
             left = getPaddingLeft();
             //左内边距+带修饰View的宽度+view左右外边距
             right = left + getDecoratedMeasuredWidth(newView) + newParams.leftMargin
                     + newParams.rightMargin;
-            bottom = top + newParams.height;
+
+            top = startBottom;
+            bottom = top + newView.getMeasuredHeight();
+
+            int margin = getMarginByTop(top);
+            newView.setScaleX((newView.getMeasuredWidth() - 2 * margin) * 1.0f / newView.getMeasuredWidth());
+            newView.setScaleY((newView.getMeasuredWidth() - 2 * margin) * 1.0f / newView.getMeasuredWidth());
+            newParams.mScrolledY = getScrolledYByTop(top);
             //调用view的layout布局方法
             layoutDecoratedWithMargins(newView, left, top, right, bottom);
-            Log.e("downScroll", "上滑动添加：" + (startPosition - 1));
         }
+
+        //设置阴影
+        setElevation();
+
         //2.滑动
         for (int i = 0; i < getChildCount(); i++) {
             View child = getChildAt(i);
@@ -312,16 +421,26 @@ public class Yta2LayoutManager extends RecyclerView.LayoutManager {
             int oldTop = child.getTop();
             int top = getTopByScrolledY(params.mScrolledY + dy);
             params.mScrolledY += dy;
+            if (i == 0) {
+                Log.e("downScroll", "下滑动移动：" + params.getViewAdapterPosition() + "\toldTop : " + oldTop + "\ttop : " + top + "\tdy : " + dy);
+            }
             child.offsetTopAndBottom(top - oldTop);
+
+            int margin = getMarginByTop(top);
+            child.setScaleX((child.getMeasuredWidth() - 2 * margin) * 1.0f / child.getMeasuredWidth());
+            child.setScaleY((child.getMeasuredWidth() - 2 * margin) * 1.0f / child.getMeasuredWidth());
         }
+
         //3.回收
-        View endView = getChildClosestToEnd();
-        YtaLayoutParams endParams = (YtaLayoutParams) endView.getLayoutParams();
-        int endPosition = endParams.getViewAdapterPosition();
-        if (endParams.mScrolledY + dy > mMaxScrolledY) {
-            recycleChildren(recycler, 0, 1);
-            Log.e("downScroll", "上滑动回收：" + endPosition);
+        for (int i = 0; i < getChildCount(); i++) {
+            if (getChildAt(i).getTop() > 0) {
+                //Top[i - 1] <= 0 ,Top[i - 2] <= 0
+                recycleChildren(recycler, 0, i - 2);
+                break;
+            }
         }
+
+
     }
 
     /**
@@ -336,6 +455,7 @@ public class Yta2LayoutManager extends RecyclerView.LayoutManager {
         if (getChildCount() == 0 || dy == 0) {
             return 0;
         }
+        Log.e("scrollBy", "dy : " + Math.abs(dy));
         boolean downScroll = dy < 0;
         /*
          * TODO:禁止滑动事件
@@ -427,6 +547,8 @@ public class Yta2LayoutManager extends RecyclerView.LayoutManager {
         }
         for (int i = endIndex - 1; i >= startIndex; i--) {
             final View view = getChildAt(i);
+            view.setScaleX(1);
+            view.setScaleY(1);
             removeViewAt(i);
             try {
                 recycler.recycleView(view);
@@ -444,6 +566,31 @@ public class Yta2LayoutManager extends RecyclerView.LayoutManager {
      */
     private View getChildClosestToStart() {
         return getChildAt(getChildCount() - 1);
+    }
+
+    /**
+     * 通过当前Item的Top值，求左右边距值
+     *
+     * @param curTop Item的top值
+     * @return 对应的Margin值
+     */
+    private int getMarginByTop(int curTop) {
+        int result = (int) (ITEM_MAX_MARGIN * (mBoundTop - curTop) * 1.0f / mBoundTop);
+        if (result < 0)
+            result = 0;
+        else if (result > ITEM_MAX_MARGIN)
+            result = ITEM_MAX_MARGIN;
+        return result;
+    }
+
+    /**
+     * 设置阴影
+     */
+    private void setElevation() {
+        for (int i = 0; i < getChildCount(); i++) {
+            View child = getChildAt(i);
+            ViewCompat.setElevation(child, 2 * (i + 1));
+        }
     }
 
     /**

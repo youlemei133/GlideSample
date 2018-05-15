@@ -1,23 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
+<com.hudawei.glidesample.ShadowLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="400dp"
+    android:layout_marginLeft="30dp"
+    android:layout_marginRight="30dp"
+    app:sl_cornerRadius="2dp"
+    app:sl_dy="10px"
+    >
 
-
-<LinearLayout
-xmlns:android="http://schemas.android.com/apk/res/android"
-android:layout_width="match_parent"
-android:layout_marginLeft="30dp"
-android:layout_marginRight="30dp"
-android:gravity="center_horizontal"
-android:layout_height="400dp">
-    <TextView
-        android:id="@+id/textView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+    <LinearLayout
+        android:paddingLeft="25dp"
+        android:paddingRight="25dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="11dp"
+        android:background="#FFFFFF"
         android:gravity="center_horizontal"
-        android:textColor="#FFFFFF"
-        android:text="1"
-        android:textSize="36dp"
+        android:orientation="vertical"
+        >
+
+        <TextView
+            android:id="@+id/tv_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:gravity="center_horizontal"
+            android:text="申论积累"
+            android:textColor="@color/colorAccent"
+            android:textSize="14dp"
+            />
+
+        <TextView
+            android:id="@+id/tv_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:text="常识判断之刑法法律知识"
+            android:textColor="#000000"
+            android:textSize="23dp"
+            />
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            >
+
+            <TextView
+                android:id="@+id/tv_author"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="文/小洁老师整理编辑"
+                android:textSize="17dp"
+                />
+
+            <TextView
+                android:id="@+id/tv_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:text="2018-04-24"
+                android:textSize="17dp"
+                />
+        </RelativeLayout>
+
+        <ImageView
+            android:id="@+id/iv_body"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:layout_marginTop="12dp"
+            />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/iv_head"
+        android:layout_width="35dp"
+        android:layout_height="35dp"
+        android:layout_gravity="center_horizontal"
         />
-    <com.hudawei.glidesample.SimpleView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
-</LinearLayout>
+</com.hudawei.glidesample.ShadowLayout>
